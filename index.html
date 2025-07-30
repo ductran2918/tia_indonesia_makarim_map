@@ -151,12 +151,22 @@
       .attr("cy", buyerCenter.y)
       .attr("r", buyerR)
       .style("stroke-dasharray", "5,5"); // Makes circle dashed
-  // Buyer text
-  svg.append("text")
-      .attr("class", "circle-header")  // Add this line
+  // Government text
+  const buyerText = svg.append("text")
+      .attr("class", "circle-header")
       .attr("x", buyerCenter.x)
-      .attr("y", buyerCenter.y - buyerR - 10)
-      .text("Indonesian Ministry of Education and Culture");
+      .attr("y", buyerCenter.y - buyerR + 30)
+      .attr("text-anchor", "middle");
+
+  buyerText.append("tspan")
+      .attr("x", buyerCenter.x)
+      .attr("dy", "0")
+      .text("Indonesian Ministry");
+
+  buyerText.append("tspan")
+      .attr("x", buyerCenter.x)
+      .attr("dy", "1.2em")  // Move down by 1.2 times the font size
+      .text("of Education and Culture");
 
   // Special team circle
   svg.append("circle")
@@ -168,9 +178,9 @@
   // Special team text
   svg.append("text")
       .attr("class", "circle-header")  // Add this line
-      .attr("x", specialCenter.x + 20)
-      .attr("y", specialCenter.y - specialR - 8)
-      .text("Special Staff of Makarim");
+      .attr("x", specialCenter.x - 5)
+      .attr("y", specialCenter.y - specialR + 45)
+      .text("Special Staff Team");
 
   // Gojek circle
   svg.append("circle")
@@ -182,8 +192,8 @@
   // Gojek text
   svg.append("text")
       .attr("class", "circle-header")  // Add this line
-      .attr("x", gojekCenter.x)
-      .attr("y", gojekCenter.y - gojekR - 10)
+      .attr("x", gojekCenter.x + 50)
+      .attr("y", gojekCenter.y - gojekR + 60)
       .text("Ex-Gojek");
 
   // Add after the circle and header declarations, before the CSV loading
@@ -240,7 +250,7 @@
     }
 
     // border color by status
-    d.borderColor = d.Status === "Suspect" ? "grey" : "steelblue";
+    d.borderColor = d.Status === "Suspect" ? "#de544a" : "steelblue";
   });
 
   // Add after the data.forEach loop
@@ -257,10 +267,10 @@
   const nodePositions = {
       "Jurist Tan": { x: gojekCenter.x + 40, y: gojekCenter.y + 30 },
       "Nadiem Makarim": { x: gojekCenter.x - 40, y: gojekCenter.y - 50 },
-      "Ibrahim Arief": { x: specialCenter.x + 60, y: specialCenter.y + 90 },
+      "Ibrahim Arief": { x: specialCenter.x + 95, y: specialCenter.y + 60 },
       "Fiona Handayani": { x: specialCenter.x + 100, y: specialCenter.y - 70 },
       "Mulyatsyah": { x: buyerCenter.x + 160, y: buyerCenter.y + 90},
-      "Sri Wahyuningsih": { x: buyerCenter.x + 190, y: buyerCenter.y - 70},
+      "Sri Wahyuningsih": { x: buyerCenter.x + 180, y: buyerCenter.y - 70},
       "Ganis Samoedra": { x: buyerCenter.x + 350, y: buyerCenter.y }  // Add this line
   };
 
@@ -302,7 +312,7 @@
   node.append("circle")
       .attr("class", "node-border")
       .attr("r", 30)
-      .attr("stroke", d => d.borderColor);
+      .attr("stroke", d => d.borderColor);  // This uses the color set above
 
   // Adjust node image sizes for mobile
   const imageSize = isMobile ? 40 : 60;       // Smaller images on mobile
@@ -341,7 +351,7 @@
   // Add legend items
   const legendData = [
       { status: "Witness", color: "steelblue" },
-      { status: "Suspect", color: "grey" }
+      { status: "Suspect", color: "#de544a" }  // Make sure this matches
   ];
 
   // Modify the colored circles for legend - horizontal layout
