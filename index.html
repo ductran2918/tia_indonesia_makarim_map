@@ -158,7 +158,29 @@
 <script>
 (async function() {
   let svg, data, node, legend;
-  
+   // Get responsive dimensions - table layout for all screens
+  function getResponsiveDimensions() {
+    const width = window.innerWidth;
+    const isMobile = width <= 500;
+    
+    // Use a single scale factor for everything
+    const baseScale = isMobile ? Math.min(width / 375, 1) : Math.min(width / 1200, 1.5);
+    
+    // Height to accommodate table layout
+    const height = Math.max(600, width * (isMobile ? 0.9 : 0.59));
+    
+    // Node size for square layout
+    const nodeSize = isMobile ? 40 : (60 * baseScale);
+    
+    return {
+      width,
+      height,
+      isMobile,
+      centerX: width / 2,
+      centerY: height / 3,
+      scale: baseScale,
+      nodeSize: nodeSize
+    };
   }
   
   // Get node positions - table layout for all screens
