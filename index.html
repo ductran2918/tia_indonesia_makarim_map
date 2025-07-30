@@ -160,8 +160,8 @@
         centerX: width / 2,
         centerY: height / 2,
         mainR: Math.min(width * 0.35, 140),
-        specialR: Math.min(width * 0.22, 85),
-        gojekR: Math.min(width * 0.15, 55)
+        specialR: Math.min(width * 0.28, 100),
+        gojekR: Math.min(width * 0.2, 65)
       };
     } else {
       // Desktop: wider aspect ratio, larger elements
@@ -186,9 +186,9 @@
       const { centerX, centerY, mainR, specialR, gojekR } = dims;
       
       const ministryCenter = { x: centerX, y: centerY - 80 };
-      const specialCenter = { x: centerX - 60, y: centerY + 10 };
-      const gojekCenter = { x: centerX + 60, y: centerY + 10 };
-      const googleCenter = { x: centerX, y: centerY + 140 };
+      const specialCenter = { x: centerX - 0, y: centerY - 43 };
+      const gojekCenter = { x: centerX , y: centerY - 15};
+      const googleCenter = { x: centerX, y: centerY + 110 };
       
       return {
         ministryCenter,
@@ -197,16 +197,16 @@
         googleCenter,
         positions: {
           // Ministry people at top - spread them out more
-          "Sri Wahyuningsih": { x: ministryCenter.x - 65, y: ministryCenter.y - 25 },
-          "Mulyatsyah": { x: ministryCenter.x + 65, y: ministryCenter.y - 25 },
+          "Sri Wahyuningsih": { x: ministryCenter.x - 65, y: ministryCenter.y - 90 },
+          "Mulyatsyah": { x: ministryCenter.x + 65, y: ministryCenter.y - 90 },
           
           // Special staff people - better vertical spacing  
-          "Fiona Handayani": { x: specialCenter.x - 30, y: specialCenter.y - 40 },
-          "Ibrahim Arief": { x: specialCenter.x + 30, y: specialCenter.y + 40 },
+          "Fiona Handayani": { x: specialCenter.x - 42, y: specialCenter.y - 65 },
+          "Ibrahim Arief": { x: specialCenter.x + 42, y: specialCenter.y - 65 },
           
           // Ex-Gojek people - better spacing
-          "Nadiem Makarim": { x: gojekCenter.x - 30, y: gojekCenter.y - 40 },
-          "Jurist Tan": { x: gojekCenter.x + 30, y: gojekCenter.y + 40 },
+          "Nadiem Makarim": { x: gojekCenter.x - 25, y: gojekCenter.y - 25 },
+          "Jurist Tan": { x: gojekCenter.x + 15, y: gojekCenter.y + 25 },
           
           // Google at bottom
           "Ganis Samoedra": { x: googleCenter.x, y: googleCenter.y }
@@ -417,7 +417,7 @@
   
   function drawNodes(dims, nodePositions) {
     const tooltip = d3.select("#tooltip");
-    const imageSize = dims.isMobile ? 24 : 60;
+    const imageSize = dims.isMobile ? 33 : 60;
     const imageRadius = imageSize / 2;
     const borderRadius = dims.isMobile ? 15 : 30;
     
