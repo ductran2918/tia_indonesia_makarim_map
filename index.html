@@ -29,17 +29,23 @@
         background: transparent;
     }
     
-    .group-circle {
+    .group-rectangle {
       fill: none;
-      stroke: #999;
-      stroke-dasharray: 5,5;
+      stroke-width: 1px;
+      stroke-dasharray: 4;
+    }
+    .gojek-group {
+      stroke: #28a745;
+    }
+    .special-group {
+      stroke: #ffc107;
     }
     .node-image {
-      clip-path: circle(30px at center);
+      clip-path: none;
     }
     .node-border {
       fill: none;
-      stroke-width: 15px;
+      stroke-width: 4px;
     }
     text {
       font-family: sans-serif;
@@ -71,6 +77,22 @@
         text-anchor: middle;
         pointer-events: none;
     }
+    .gojek-text {
+        fill: #136348;
+        font-family: sans-serif;
+        font-size: 12px;
+        font-weight: bold;
+        text-anchor: middle;
+        pointer-events: none;
+    }
+    .special-text {
+        fill: #e8bb00;
+        font-family: sans-serif;
+        font-size: 12px;
+        font-weight: bold;
+        text-anchor: middle;
+        pointer-events: none;
+    }
     .legend text {
         text-anchor: start;
     }
@@ -86,22 +108,19 @@
     }
     .chart-subtitle {
       font-family: sans-serif;
-      font-size: 16px;
+      font-size: 14px;
       font-weight: normal;
       text-anchor: middle;
     }
 
     /* Mobile-specific styles */
     @media (max-width: 768px) {
-      .group-circle {
+      .group-rectangle {
         stroke-width: 1px;
         stroke-dasharray: 3,3;
       }
-      .node-image {
-        clip-path: circle(15px at center);
-      }
       .node-border {
-        stroke-width: 8px;
+        stroke-width: 2px;
       }
       text {
         font-size: 8px;
@@ -112,7 +131,7 @@
         max-width: 120px;
         line-height: 1.3;
       }
-      .circle-header {
+      .circle-header, .gojek-text, .special-text {
         font-size: 9px;
       }
       .legend text {
@@ -140,104 +159,98 @@
 (async function() {
   let svg, data, node, legend;
   
-  // Detect if device is mobile
-  function isMobileDevice() {
-    return window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  }
-  
-  // Get responsive dimensions based on device type
+  // Get responsive dimensions - table layout for all screens
   function getResponsiveDimensions() {
     const width = window.innerWidth;
-    const isMobile = isMobileDevice();
+    const isMobile = width <= 500;
     
-    if (isMobile) {
-      // Mobile: taller aspect ratio, smaller elements
-      const height = Math.max(600, width * 1.3);
-      return {
-        width,
-        height,
-        isMobile: true,
-        centerX: width / 2,
-        centerY: height / 2,
-        mainR: Math.min(width * 0.35, 140),
-        specialR: Math.min(width * 0.28, 100),
-        gojekR: Math.min(width * 0.2, 65)
-      };
-    } else {
-      // Desktop: wider aspect ratio, larger elements
-      const height = Math.max(600, width * 0.6);
-      return {
-        width,
-        height,
-        isMobile: false,
-        centerX: width / 2,
-        centerY: height / 2,
-        buyerR: Math.min(width * 0.25, 250),
-        specialR: Math.min(width * 0.18, 180),
-        gojekR: Math.min(width * 0.11, 110)
-      };
-    }
+    // Use a single scale factor for everything
+    const baseScale = isMobile ? Math.min(width / 375, 1) : Math.min(width / 1200, 1.5);
+    
+    // Height to accommodate table layout
+    const height = Math.max(500, width * (isMobile ? 1.2 : 0.8));
+    
+    // Node size for square layout
+    const nodeSize = isMobile ? 40 : (60 * baseScale);
+    
+    return {
+      width,
+      height,
+      isMobile,
+      centerX: width / 2,
+      centerY: height / 3,
+      scale: baseScale,
+      nodeSize: nodeSize
+    };
   }
   
-  // Get node positions based on device type
+  // Get node positions - table layout for all screens
   function getNodePositions(dims) {
-    if (dims.isMobile) {
-      // Mobile: vertical stacking layout with better spacing
-      const { centerX, centerY, mainR, specialR, gojekR } = dims;
-      
-      const ministryCenter = { x: centerX, y: centerY - 80 };
-      const specialCenter = { x: centerX - 0, y: centerY - 43 };
-      const gojekCenter = { x: centerX , y: centerY - 15};
-      const googleCenter = { x: centerX, y: centerY + 110 };
-      
-      return {
-        ministryCenter,
-        specialCenter,
-        gojekCenter,
-        googleCenter,
-        positions: {
-          // Ministry people at top - spread them out more
-          "Sri Wahyuningsih": { x: ministryCenter.x - 65, y: ministryCenter.y - 90 },
-          "Mulyatsyah": { x: ministryCenter.x + 65, y: ministryCenter.y - 90 },
-          
-          // Special staff people - better vertical spacing  
-          "Fiona Handayani": { x: specialCenter.x - 42, y: specialCenter.y - 65 },
-          "Ibrahim Arief": { x: specialCenter.x + 42, y: specialCenter.y - 65 },
-          
-          // Ex-Gojek people - better spacing
-          "Nadiem Makarim": { x: gojekCenter.x - 25, y: gojekCenter.y - 25 },
-          "Jurist Tan": { x: gojekCenter.x + 15, y: gojekCenter.y + 25 },
-          
-          // Google at bottom
-          "Ganis Samoedra": { x: googleCenter.x, y: googleCenter.y }
-        }
-      };
-    } else {
-      // Desktop: horizontal overlapping layout
-      const { centerX, centerY, buyerR, specialR, gojekR } = dims;
-      
-      const buyerCenter = { x: centerX, y: centerY };
-      const specialCenter = { x: centerX - 55, y: centerY - 10 };
-      const gojekCenter = { x: centerX - 120, y: centerY - 10 };
-      
-      return {
-        buyerCenter,
-        specialCenter,
-        gojekCenter,
-        positions: {
-          "Jurist Tan": { x: gojekCenter.x + 40, y: gojekCenter.y + 30 },
-          "Nadiem Makarim": { x: gojekCenter.x - 40, y: gojekCenter.y - 50 },
-          "Ibrahim Arief": { x: specialCenter.x + 95, y: specialCenter.y + 60 },
-          "Fiona Handayani": { x: specialCenter.x + 100, y: specialCenter.y - 70 },
-          "Mulyatsyah": { x: buyerCenter.x + 160, y: buyerCenter.y + 90 },
-          "Sri Wahyuningsih": { x: buyerCenter.x + 180, y: buyerCenter.y - 70 },
-          "Ganis Samoedra": { x: buyerCenter.x + 350, y: buyerCenter.y }
-        }
-      };
-    }
+    const { centerX, centerY, nodeSize, scale } = dims;
+    const horizontalSpacing = nodeSize * 2.5;
+    const verticalSpacing   = nodeSize * 2;
+    const nodeToPersonSpace = dims.isMobile ? 25 : (35 * scale);
+
+    // Start positioning from the legend and work down
+    const legendY = dims.isMobile ? 65 : (75 * scale); // 10px after subtitle
+    const ministryTextY = legendY + (dims.isMobile ? 30 : (40 * scale)); // 20px after legend
+    const gojekTextY = ministryTextY + (dims.isMobile ? 15 : (20 * scale)); // 5px after ministry text
+    const gojekRectY = gojekTextY + (dims.isMobile ? 10 : (15 * scale)); // 5px after ex-Gojek text
+    const topRowY = gojekRectY + nodeSize * 0.8; // Top of nodes aligns with rect
+    const bottomRowY = topRowY + nodeSize + (dims.isMobile ? 30 : (40 * scale)); // 30px between node borders
+    
+    // Calculate Special staff text position - 10px below Ibrahim's text
+    const ibrahimTextY = bottomRowY + nodeToPersonSpace;
+    const specialTextY = ibrahimTextY + (dims.isMobile ? 20 : (35 * scale)); // 10px below Ibrahim's text
+    
+    // Calculate Special staff rectangle bottom
+    const specialRectBottom = bottomRowY + nodeSize * 0.8 + nodeToPersonSpace;
+    
+    // Google text 20px below Special staff rectangle bottom
+    const googleTextY = specialRectBottom + (dims.isMobile ? 25 : (30 * scale)); // 20px below special rect
+    
+    // Ganis node 10px below Google text
+    const googleY = googleTextY + (dims.isMobile ? 15 : (20 * scale)); // Adjust this calculation
+
+    const startX = centerX - horizontalSpacing;
+
+    const positions = {
+      "Nadiem Makarim":     { x: startX,                       y: topRowY   },
+      "Sri Wahyuningsih":   { x: startX + horizontalSpacing,   y: topRowY   },
+      "Mulyatsyah":         { x: startX + horizontalSpacing*2, y: topRowY   },
+      "Jurist Tan":         { x: startX,                       y: bottomRowY},
+      "Ibrahim Arief":      { x: startX + horizontalSpacing,   y: bottomRowY},
+      "Fiona Handayani":    { x: startX + horizontalSpacing*2, y: bottomRowY},
+      "Ganis Samoedra":     { x: centerX,                      y: googleY + nodeSize * 0.3 }
+    };
+
+    return {
+      positions,
+      gojekRect: {
+        x:      startX - nodeSize * 0.8,
+        y:      gojekRectY,
+        width:  nodeSize * 1.6,
+        height: (bottomRowY - nodeSize * 0.8) + (nodeSize * 1.6 + nodeToPersonSpace) - gojekRectY
+      },
+      specialRect: {
+        x:      startX - nodeSize * 0.8,
+        y:      bottomRowY - nodeSize * 0.8,
+        width:  horizontalSpacing * 2 + nodeSize * 1.6,
+        height: nodeSize * 1.6 + nodeToPersonSpace
+      },
+      // center ex-Gojek text on the first-column node:
+      gojekTextX: positions["Nadiem Makarim"].x,
+      gojekTextY: gojekTextY,
+
+      specialTextX: centerX,
+      specialTextY: specialTextY, // Updated to be 10px below Ibrahim's text
+      ministryTextY: ministryTextY,
+      googleTextY: googleTextY, // Updated to be 20px below special rect
+      legendY: legendY
+    };
   }
   
-  // Create visualization based on device type
+  // Create visualization - unified vertical layout for all screens
   function createVisualization() {
     const dims = getResponsiveDimensions();
     const nodePositions = getNodePositions(dims);
@@ -255,12 +268,8 @@
         .style("width", "100%")
         .style("height", "auto");
 
-    // Draw circles based on device type
-    if (dims.isMobile) {
-      drawMobileCircles(dims, nodePositions);
-    } else {
-      drawDesktopCircles(dims, nodePositions);
-    }
+    // Draw rectangles using unified vertical layout
+    drawRectangles(dims, nodePositions);
     
     // Draw nodes if data is available
     if (data) {
@@ -271,155 +280,75 @@
     drawLegend(dims, nodePositions);
   }
   
-  function drawMobileCircles(dims, nodePositions) {
-    const { ministryCenter, specialCenter, gojekCenter, googleCenter } = nodePositions;
+  // Unified rectangle drawing function for all screen sizes
+  function drawRectangles(dims, nodePositions) {
+    const { gojekRect, specialRect, ministryTextY, gojekTextX, gojekTextY, specialTextX, specialTextY, googleTextY } = nodePositions;
+    const { scale } = dims;
     
-    // Main Ministry circle
-    svg.append("circle")
-        .attr("class", "group-circle")
-        .attr("cx", ministryCenter.x)
-        .attr("cy", ministryCenter.y)
-        .attr("r", dims.mainR);
-        
-    const ministryText = svg.append("text")
-        .attr("class", "circle-header")
-        .attr("x", ministryCenter.x)
-        .attr("y", ministryCenter.y - dims.mainR + 15);
-
-    ministryText.append("tspan")
-        .attr("x", ministryCenter.x)
-        .attr("dy", "0")
-        .text("Indonesian Ministry");
-
-    ministryText.append("tspan")
-        .attr("x", ministryCenter.x)
-        .attr("dy", "1.2em")
-        .text("of Education and Culture");
-
-    // Special staff circle
-    svg.append("circle")
-        .attr("class", "group-circle")
-        .attr("cx", specialCenter.x)
-        .attr("cy", specialCenter.y)
-        .attr("r", dims.specialR);
-        
+    // Ministry title
     svg.append("text")
         .attr("class", "circle-header")
-        .attr("x", specialCenter.x)
-        .attr("y", specialCenter.y - dims.specialR + 15)
+        .attr("x", dims.centerX)
+        .attr("y", ministryTextY)
+        .text("Indonesia's Ministry of Education and Culture");
+
+    // Gojek rectangle
+    svg.append("rect")
+        .attr("class", "group-rectangle gojek-group")
+        .attr("x", gojekRect.x)
+        .attr("y", gojekRect.y)
+        .attr("width", gojekRect.width)
+        .attr("height", gojekRect.height);
+        
+    svg.append("text")
+        .attr("class", "gojek-text")
+        .attr("x", gojekTextX)
+        .attr("y", gojekTextY)
+        .text("ex-Gojek");
+
+    // Special staff rectangle
+    svg.append("rect")
+        .attr("class", "group-rectangle special-group")
+        .attr("x", specialRect.x)
+        .attr("y", specialRect.y)
+        .attr("width", specialRect.width)
+        .attr("height", specialRect.height);
+        
+    svg.append("text")
+        .attr("class", "special-text")
+        .attr("x", specialTextX)
+        .attr("y", specialTextY)
         .text("Special staff");
-
-    // Ex-Gojek circle
-    svg.append("circle")
-        .attr("class", "group-circle")
-        .attr("cx", gojekCenter.x)
-        .attr("cy", gojekCenter.y)
-        .attr("r", dims.gojekR);
-        
-    svg.append("text")
-        .attr("class", "circle-header")
-        .attr("x", gojekCenter.x)
-        .attr("y", gojekCenter.y - dims.gojekR + 15)
-        .text("Ex-Gojek");
 
     // Google Indonesia text
     svg.append("text")
         .attr("class", "circle-header")
-        .attr("x", googleCenter.x)
-        .attr("y", googleCenter.y - 25)
+        .attr("x", dims.centerX)
+        .attr("y", googleTextY)
         .text("Google Indonesia");
 
-    // Title and subtitle
+    // Title and subtitle with 10px spacing
     svg.append("text")
         .attr("class", "chart-title")
         .attr("x", dims.centerX)
-        .attr("y", 25)
+        .attr("y", dims.isMobile ? 20 : (25 * dims.scale))
         .text("Key people involved in laptop procurement case");
 
     svg.append("text")
         .attr("class", "chart-subtitle")
         .attr("x", dims.centerX)
-        .attr("y", 40)
-        .text("Tap nodes for details");
-  }
-  
-  function drawDesktopCircles(dims, nodePositions) {
-    const { buyerCenter, specialCenter, gojekCenter } = nodePositions;
-    
-    // Buyer circle
-    svg.append("circle")
-        .attr("class", "group-circle")
-        .attr("cx", buyerCenter.x)
-        .attr("cy", buyerCenter.y)
-        .attr("r", dims.buyerR);
-        
-    const buyerText = svg.append("text")
-        .attr("class", "circle-header")
-        .attr("x", buyerCenter.x)
-        .attr("y", buyerCenter.y - dims.buyerR + 30);
-
-    buyerText.append("tspan")
-        .attr("x", buyerCenter.x)
-        .attr("dy", "0")
-        .text("Indonesian Ministry");
-
-    buyerText.append("tspan")
-        .attr("x", buyerCenter.x)
-        .attr("dy", "1.2em")
-        .text("of Education and Culture");
-
-    // Special team circle
-    svg.append("circle")
-        .attr("class", "group-circle")
-        .attr("cx", specialCenter.x)
-        .attr("cy", specialCenter.y)
-        .attr("r", dims.specialR);
-        
-    svg.append("text")
-        .attr("class", "circle-header")
-        .attr("x", specialCenter.x - 5)
-        .attr("y", specialCenter.y - dims.specialR + 45)
-        .text("Special staff");
-
-    // Gojek circle
-    svg.append("circle")
-        .attr("class", "group-circle")
-        .attr("cx", gojekCenter.x)
-        .attr("cy", gojekCenter.y)
-        .attr("r", dims.gojekR);
-        
-    svg.append("text")
-        .attr("class", "circle-header")
-        .attr("x", gojekCenter.x + 50)
-        .attr("y", gojekCenter.y - dims.gojekR + 60)
-        .text("Ex-Gojek");
-
-    // Google Indonesia text
-    svg.append("text")
-        .attr("class", "circle-header")
-        .attr("x", nodePositions.positions["Ganis Samoedra"].x)
-        .attr("y", nodePositions.positions["Ganis Samoedra"].y - 50)
-        .text("Google Indonesia");
-
-    // Title and subtitle
-    svg.append("text")
-        .attr("class", "chart-title")
-        .attr("x", buyerCenter.x)
-        .attr("y", buyerCenter.y - dims.buyerR - 120)
-        .text("Key people involved in laptop procurement case");
-
-    svg.append("text")
-        .attr("class", "chart-subtitle")
-        .attr("x", buyerCenter.x)
-        .attr("y", buyerCenter.y - dims.buyerR - 95)
-        .text("Hover over nodes to see more details");
+        .attr("y", dims.isMobile ? 35 : (45 * dims.scale)) // 10px after title
+        .text(dims.isMobile ? "Tap nodes for details" : "Hover over nodes for details");
   }
   
   function drawNodes(dims, nodePositions) {
     const tooltip = d3.select("#tooltip");
-    const imageSize = dims.isMobile ? 33 : 60;
+    const imageSize = dims.isMobile ? 30 : (50 * dims.scale);
     const imageRadius = imageSize / 2;
-    const borderRadius = dims.isMobile ? 15 : 30;
+    
+    // Square border size
+    const borderSize = dims.isMobile ? 35 : (55 * dims.scale);
+    const borderRadius = borderSize / 2;
     
     node = svg.selectAll("g.node")
       .data(data)
@@ -431,38 +360,41 @@
           return `translate(${pos.x},${pos.y})`;
         });
 
-    // Add touch events for mobile, mouse events for desktop
-    if (dims.isMobile) {
-      node.on("touchstart", (e,d) => {
-          e.preventDefault();
-          tooltip.style("visibility", "visible").text(d.title);
-          const touch = e.touches[0];
-          tooltip.style("top", (touch.pageY + 10) + "px")
-                 .style("left", (touch.pageX + 10) + "px");
-        })
-        .on("touchend", () => {
-          setTimeout(() => {
-            tooltip.style("visibility", "hidden");
-          }, 2000);
-        });
-    } else {
-      node.on("mouseover", (e,d) => {
-          tooltip.style("visibility", "visible").text(d.title);
-        })
-        .on("mousemove", (e) => {
-          tooltip.style("top", (e.pageY + 10) + "px")
-                 .style("left", (e.pageX + 10) + "px");
-        })
-        .on("mouseout", () => {
+    // Add touch events for mobile, mouse events for all
+    node.on("touchstart", (e,d) => {
+        e.preventDefault();
+        tooltip.style("visibility", "visible").text(d.title);
+        const touch = e.touches[0];
+        tooltip.style("top", (touch.pageY + 10) + "px")
+               .style("left", (touch.pageX + 10) + "px");
+      })
+      .on("touchend", () => {
+        setTimeout(() => {
           tooltip.style("visibility", "hidden");
-        });
-    }
+        }, 2000);
+      })
+      .on("mouseover", (e,d) => {
+        tooltip.style("visibility", "visible").text(d.title);
+      })
+      .on("mousemove", (e) => {
+        tooltip.style("top", (e.pageY + 10) + "px")
+               .style("left", (e.pageX + 10) + "px");
+      })
+      .on("mouseout", () => {
+        tooltip.style("visibility", "hidden");
+      });
 
-    node.append("circle")
+    // Square border instead of circle
+    node.append("rect")
         .attr("class", "node-border")
-        .attr("r", borderRadius)
-        .attr("stroke", d => d.borderColor);
+        .attr("x", -borderRadius)
+        .attr("y", -borderRadius)
+        .attr("width", borderSize)
+        .attr("height", borderSize)
+        .attr("stroke", d => d.borderColor)
+        .attr("fill", "none");
 
+    // Square image instead of circular
     node.append("image")
         .attr("class", "node-image")
         .attr("xlink:href", d => d.image)
@@ -472,56 +404,57 @@
         .attr("height", imageSize);
 
     node.append("text")
-        .attr("dy", dims.isMobile ? 25 : 48)
+        .attr("dy", dims.isMobile ? 30 : (45 * dims.scale))
         .text(d => d.person)
-        .style("font-size", dims.isMobile ? "8px" : "12px");
-
-    // Add "Minister" subtitle for Nadiem Makarim
-    node.filter(d => d.person === "Nadiem Makarim")
-        .append("text")
-        .attr("dy", dims.isMobile ? 33 : 62)
-        .text("Minister")
-        .style("font-size", dims.isMobile ? "6px" : "10px")
-        .style("fill", "#666");
+        .style("font-size", dims.isMobile ? "8px" : `${10 * dims.scale}px`)
+        .style("text-anchor", "middle")
+        .style("fill", "#333");
   }
   
   function drawLegend(dims, nodePositions) {
-    const legendX = dims.isMobile ? dims.centerX - 40 : (nodePositions.buyerCenter?.x - 100 || dims.centerX - 100);
-    const legendY = dims.isMobile ? 55 : (nodePositions.buyerCenter?.y - dims.buyerR - 60 || 55);
-    
-    legend = svg.append("g")
-        .attr("class", "legend")
-        .attr("transform", `translate(${legendX}, ${legendY})`);
-
     const legendData = [
-        { status: "Witness", color: "steelblue" },
-        { status: "Suspect", color: "#de544a" }
+      { status: "Witness", color: "steelblue" },
+      { status: "Suspect", color: "#de544a" }
     ];
 
-    const spacing = dims.isMobile ? 50 : 120;
-    const circleRadius = dims.isMobile ? 6 : 15;
-    const textOffset = dims.isMobile ? 10 : 25;
+    const spacing    = dims.isMobile ? 50 : (80 * dims.scale);
+    const squareSize = dims.isMobile ? 12 : (16 * dims.scale);
+    const textOffset = dims.isMobile ? 10 : (12 * dims.scale);
 
-    legend.selectAll("circle")
-        .data(legendData)
-        .enter()
-        .append("circle")
-        .attr("cx", (d, i) => i * spacing)
-        .attr("cy", 0)
-        .attr("r", circleRadius)
+    // total width = distance from first center to last center + one square width
+    const totalWidth = (legendData.length - 1) * spacing + squareSize;
+
+    // center the group by shifting left by half its width
+    const legendX = dims.centerX - (totalWidth / 2);
+    const legendY = nodePositions.legendY; // Use the calculated legendY
+
+    const legend = svg.append("g")
+        .attr("class", "legend")
+        .attr("transform", `translate(${legendX},${legendY})`);
+
+    // draw squares centered on i*spacing
+    legend.selectAll("rect")
+      .data(legendData)
+      .enter().append("rect")
+        .attr("x", (d,i) => i * spacing - squareSize/2)
+        .attr("y", -squareSize/2)
+        .attr("width",  squareSize)
+        .attr("height", squareSize)
         .attr("stroke", d => d.color)
-        .attr("class", "legend-circle")
-        .attr("fill", "none");
+        .attr("fill",   "none")
+        .attr("stroke-width", dims.isMobile ? 2 : (4 * dims.scale));
 
+    // draw labels centered also on i*spacing
     legend.selectAll("text")
-        .data(legendData)
-        .enter()
-        .append("text")
-        .attr("x", (d, i) => i * spacing + textOffset)
+      .data(legendData)
+      .enter().append("text")
+        // move to right edge of square + a little padding
+        .attr("x", (d, i) => i * spacing + squareSize/2 + textOffset*0.45)
         .attr("y", 0)
         .attr("dy", "0.3em")
         .text(d => d.status)
-        .style("font-size", dims.isMobile ? "7px" : "12px");
+        .style("text-anchor", "start")   // left-align the label
+        .style("font-size", dims.isMobile ? "7px" : `${12 * dims.scale}px`);
   }
 
   // Load CSV data
