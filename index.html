@@ -111,6 +111,47 @@
         }
     }
   </style>
+<!-- Add this in the head section of your HTML file -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  /* Add responsive CSS */
+  .visualization-container {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  /* Make SVG responsive */
+  svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  
+  /* Adjust text for mobile */
+  @media screen and (max-width: 767px) {
+    .node text, .label text {
+      font-size: 12px; /* smaller font for mobile */
+    }
+    
+    /* This scales the entire visualization */
+    svg {
+      transform-origin: center center;
+      transform: scale(0.85);
+    }
+    
+    /* Adjust positioning for mobile */
+    .right-side-nodes {
+      transform: translateX(-20px); /* move Google Indonesia node left on mobile */
+    }
+    
+    /* Update hover instruction for touch devices */
+    .hover-instruction {
+      content: "Tap nodes to see more details";
+    }
+  }
+</style>
 </head>
 <body>
 
@@ -274,6 +315,8 @@
         .text("Hover over nodes to see more details");
   }
   
+
+  
   function drawNodes(dims, nodePositions) {
     const tooltip = d3.select("#tooltip");
     const imageSize = dims.isMobile ? 30 : 60;
@@ -358,7 +401,39 @@
         .style("font-family", "sans-serif")
         .style("font-size", dims.isMobile ? "8px" : "12px");
   }
+    // Responsive function to adjust visualization based on screen size
+    function makeResponsive() {
+    // Get the dimensions of the viewport
+    const viewportWidth = window.innerWidth;
+    
+    // Adjust visualization based on screen size
+    if (viewportWidth <= 767) {
+        // For mobile
+        // Check if you're using D3 force simulation
+        if (typeof simulation !== 'undefined') {
+        simulation.force("center", d3.forceCenter(width/2, height/2))
+            .force("x", d3.forceX().strength(0.1).x(function(d) {
+            // Adjust x positions to be closer to center on mobile
+            return width/2 + (d.x - width/2) * 0.8;
+            }))
+            .force("y", d3.forceY().strength(0.1).y(function(d) {
+            return height/2 + (d.y - height/2) * 0.8;
+            }))
+            .alpha(0.3).restart();
+        }
+        
+        // Update text to "tap" instead of "hover" for mobile
+        let instructionText = document.querySelector(".instructions-text") || 
+                            document.querySelector("text:contains('Hover over nodes')");
+        if (instructionText) {
+        instructionText.textContent = "Tap nodes to see more details";
+        }
+    }
+    }
 
+// Call this function on load and window resize
+window.addEventListener('load', makeResponsive);
+window.addEventListener('resize', makeResponsive);
   // — 4. Load your CSV
   data = await d3.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRtgiSI8nDz2DcCgy2jgWWgDCR-DCgF8PMo0mDzKG28DZTJv9b4S_eFKWQFfSTNms9nlsn7nEGnBLZq/pub?gid=0&single=true&output=csv");
   console.log("Loaded data:", data);
