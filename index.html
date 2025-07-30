@@ -66,11 +66,11 @@
         pointer-events: none;
     }
     .legend text {
-        text-anchor: start;  // Align text to left
+        text-anchor: start;  /* Align text to left */
     }
     .legend-circle {
         fill: none;
-        stroke-width: 8px;  // This controls the border thickness
+        stroke-width: 8px;  /* This controls the border thickness */
     }
     .chart-title {
       font-family: sans-serif;
@@ -117,281 +117,283 @@
 <div class="tooltip" id="tooltip"></div>
 <script>
 (async function() {
-  // — 1. Set up SVG dimensions
-  // Modify the SVG setup for better responsiveness
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  const svg = d3.select("body")
-      .append("svg")
-      .attr("viewBox", [0, 0, width, height])
-      .attr("preserveAspectRatio", "xMidYMid meet")  // Add this for better scaling
-      .style("width", "100%")
-      .style("height", "100%");
+  let svg, data, node, legend;
+  
+  // Function to get responsive dimensions
+  function getResponsiveDimensions() {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const isMobile = width < 768;
+    const isSmallMobile = width < 480;
+    
+    return {
+      width,
+      height,
+      isMobile,
+      isSmallMobile,
+      centerX: width / 2,
+      centerY: height / 2,
+      buyerR: isMobile ? Math.min(width * 0.35, 180) : Math.min(width * 0.25, 250),
+      specialR: isMobile ? Math.min(width * 0.25, 130) : Math.min(width * 0.18, 180),
+      gojekR: isMobile ? Math.min(width * 0.15, 80) : Math.min(width * 0.11, 110)
+    };
+  }
+  
+  // Function to get node positions based on current dimensions
+  function getNodePositions(dims) {
+    const buyerCenter = { x: dims.centerX, y: dims.centerY };
+    const specialCenter = { x: dims.centerX - (dims.isMobile ? 35 : 55), y: dims.centerY - 10 };
+    const gojekCenter = { x: dims.centerX - (dims.isMobile ? 80 : 120), y: dims.centerY - 10 };
+    
+    return {
+      buyerCenter,
+      specialCenter,
+      gojekCenter,
+      positions: {
+        "Jurist Tan": { x: gojekCenter.x + (dims.isMobile ? 25 : 40), y: gojekCenter.y + (dims.isMobile ? 20 : 30) },
+        "Nadiem Makarim": { x: gojekCenter.x - (dims.isMobile ? 25 : 40), y: gojekCenter.y - (dims.isMobile ? 35 : 50) },
+        "Ibrahim Arief": { x: specialCenter.x + (dims.isMobile ? 60 : 95), y: specialCenter.y + (dims.isMobile ? 40 : 60) },
+        "Fiona Handayani": { x: specialCenter.x + (dims.isMobile ? 60 : 100), y: specialCenter.y - (dims.isMobile ? 45 : 70) },
+        "Mulyatsyah": { x: buyerCenter.x + (dims.isMobile ? 100 : 160), y: buyerCenter.y + (dims.isMobile ? 60 : 90) },
+        "Sri Wahyuningsih": { x: buyerCenter.x + (dims.isMobile ? 110 : 180), y: buyerCenter.y - (dims.isMobile ? 45 : 70) },
+        "Ganis Samoedra": { x: buyerCenter.x + (dims.isMobile ? 200 : 350), y: buyerCenter.y }
+      }
+    };
+  }
+  
+  // Function to create/update the entire visualization
+  function createVisualization() {
+    const dims = getResponsiveDimensions();
+    const nodePositions = getNodePositions(dims);
+    
+    // Clear existing SVG
+    d3.select("body").select("svg").remove();
+    
+    // Create new SVG
+    svg = d3.select("body")
+        .append("svg")
+        .attr("viewBox", [0, 0, dims.width, dims.height])
+        .attr("preserveAspectRatio", "xMidYMid meet")
+        .style("width", "100%")
+        .style("height", "100%");
 
-  const centerX = width / 2;
-  const centerY = height / 2;
+    // Draw circles
+    drawCircles(dims, nodePositions);
+    
+    // Draw nodes if data is available
+    if (data) {
+      drawNodes(dims, nodePositions);
+    }
+    
+    // Draw legend
+    drawLegend(dims, nodePositions.buyerCenter);
+  }
+  
+  function drawCircles(dims, nodePositions) {
+    const { buyerCenter, specialCenter, gojekCenter } = nodePositions;
+    
+    // Buyer circle
+    svg.append("circle")
+        .attr("class", "group-circle")
+        .attr("cx", buyerCenter.x)
+        .attr("cy", buyerCenter.y)
+        .attr("r", dims.buyerR)
+        .style("stroke-dasharray", "5,5");
+        
+    // Government text
+    const buyerText = svg.append("text")
+        .attr("class", "circle-header")
+        .attr("x", buyerCenter.x)
+        .attr("y", buyerCenter.y - dims.buyerR + (dims.isMobile ? 20 : 30))
+        .attr("text-anchor", "middle");
 
-  // — 2. Update Group circle radii
-  const isMobile = window.innerWidth < 768;
-  const buyerR = isMobile ? 180 : 250;        // Smaller circles on mobile
-  const specialR = isMobile ? 130 : 180;
-  const gojekR = isMobile ? 80 : 110;
-  const outsideR = buyerR + 100;
+    buyerText.append("tspan")
+        .attr("x", buyerCenter.x)
+        .attr("dy", "0")
+        .text("Indonesian Ministry");
 
-  // Update circle centers for better positioning
-  const buyerCenter = { x: width/2, y: height/2 };
-  const specialCenter = { x: width/2 - 55, y: height/2 - 10};  // Adjusted position
-  const gojekCenter = { x: width/2 - 120, y: height/2 - 10 };  // Adjusted position
+    buyerText.append("tspan")
+        .attr("x", buyerCenter.x)
+        .attr("dy", "1.2em")
+        .text("of Education and Culture");
 
-  // — 3. Draw the three nested group circles
-  // Buyer circle
-  svg.append("circle")
-      .attr("class", "group-circle")
-      .attr("cx", buyerCenter.x)
-      .attr("cy", buyerCenter.y)
-      .attr("r", buyerR)
-      .style("stroke-dasharray", "5,5"); // Makes circle dashed
-  // Government text
-  const buyerText = svg.append("text")
-      .attr("class", "circle-header")
-      .attr("x", buyerCenter.x)
-      .attr("y", buyerCenter.y - buyerR + 30)
-      .attr("text-anchor", "middle");
+    // Special team circle
+    svg.append("circle")
+        .attr("class", "group-circle")
+        .attr("cx", specialCenter.x)
+        .attr("cy", specialCenter.y)
+        .attr("r", dims.specialR)
+        .style("stroke-dasharray", "5,5");
+        
+    svg.append("text")
+        .attr("class", "circle-header")
+        .attr("x", specialCenter.x - 5)
+        .attr("y", specialCenter.y - dims.specialR + (dims.isMobile ? 30 : 45))
+        .text("Special staff");
 
-  buyerText.append("tspan")
-      .attr("x", buyerCenter.x)
-      .attr("dy", "0")
-      .text("Indonesian Ministry");
+    // Gojek circle
+    svg.append("circle")
+        .attr("class", "group-circle")
+        .attr("cx", gojekCenter.x)
+        .attr("cy", gojekCenter.y)
+        .attr("r", dims.gojekR)
+        .style("stroke-dasharray", "5,5");
+        
+    svg.append("text")
+        .attr("class", "circle-header")
+        .attr("x", gojekCenter.x + (dims.isMobile ? 30 : 50))
+        .attr("y", gojekCenter.y - dims.gojekR + (dims.isMobile ? 40 : 60))
+        .text("Ex-Gojek");
 
-  buyerText.append("tspan")
-      .attr("x", buyerCenter.x)
-      .attr("dy", "1.2em")  // Move down by 1.2 times the font size
-      .text("of Education and Culture");
+    // Google Indonesia text
+    svg.append("text")
+        .attr("class", "circle-header")
+        .attr("x", nodePositions.positions["Ganis Samoedra"].x)
+        .attr("y", nodePositions.positions["Ganis Samoedra"].y - 50)
+        .text("Google Indonesia");
 
-  // Special team circle
-  svg.append("circle")
-      .attr("class", "group-circle")
-      .attr("cx", specialCenter.x)
-      .attr("cy", specialCenter.y)
-      .attr("r", specialR)
-      .style("stroke-dasharray", "5,5");
-  // Special team text
-  svg.append("text")
-      .attr("class", "circle-header")  // Add this line
-      .attr("x", specialCenter.x - 5)
-      .attr("y", specialCenter.y - specialR + 45)
-      .text("Special staff");
+    // Title and subtitle
+    svg.append("text")
+        .attr("class", "chart-title")
+        .attr("x", buyerCenter.x)
+        .attr("y", buyerCenter.y - dims.buyerR - (dims.isMobile ? 80 : 120))
+        .attr("text-anchor", "middle")
+        .style("font-family", "sans-serif")
+        .style("font-size", dims.isMobile ? "16px" : "22px")
+        .style("font-weight", "bold")
+        .text("Key people involved in laptop procurement case");
 
-  // Gojek circle
-  svg.append("circle")
-      .attr("class", "group-circle")
-      .attr("cx", gojekCenter.x)
-      .attr("cy", gojekCenter.y)
-      .attr("r", gojekR)
-      .style("stroke-dasharray", "5,5");
-  // Gojek text
-  svg.append("text")
-      .attr("class", "circle-header")  // Add this line
-      .attr("x", gojekCenter.x + 50)
-      .attr("y", gojekCenter.y - gojekR + 60)
-      .text("Ex-Gojek");
+    svg.append("text")
+        .attr("class", "chart-subtitle")
+        .attr("x", buyerCenter.x)
+        .attr("y", buyerCenter.y - dims.buyerR - (dims.isMobile ? 60 : 95))
+        .attr("text-anchor", "middle")
+        .style("font-family", "sans-serif")
+        .style("font-size", dims.isMobile ? "12px" : "16px")
+        .style("font-weight", "normal")
+        .text("Hover over nodes to see more details");
+  }
+  
+  function drawNodes(dims, nodePositions) {
+    const tooltip = d3.select("#tooltip");
+    const imageSize = dims.isMobile ? 30 : 60;
+    const imageRadius = imageSize / 2;
+    
+    node = svg.selectAll("g.node")
+      .data(data)
+      .enter()
+      .append("g")
+        .attr("class", "node")
+        .attr("transform", d => {
+          const pos = nodePositions.positions[d.person] || { x: dims.centerX, y: dims.centerY };
+          return `translate(${pos.x},${pos.y})`;
+        })
+        .on("mouseover", (e,d) => {
+          tooltip.style("visibility", "visible").text(d.title);
+        })
+        .on("mousemove", (e) => {
+          tooltip.style("top", (e.pageY + 10) + "px")
+                 .style("left", (e.pageX + 10) + "px");
+        })
+        .on("mouseout", () => {
+          tooltip.style("visibility", "hidden");
+        });
 
-  // Add after the circle and header declarations, before the CSV loading
-  svg.append("text")
-      .attr("class", "circle-header")
-      .attr("x", buyerCenter.x + 350)  // Same x position as Ganis Samoedra
-      .attr("y", buyerCenter.y - 50)   // 50px above the node
-      .text("Google Indonesia");
+    node.append("circle")
+        .attr("class", "node-border")
+        .attr("r", dims.isMobile ? 20 : 30)
+        .attr("stroke", d => d.borderColor);
 
-  // Add title
-  svg.append("text")
-      .attr("class", "chart-title")
-      .attr("x", buyerCenter.x)
-      .attr("y", buyerCenter.y - buyerR - 120)  // Position above legend
-      .attr("text-anchor", "middle")
-      .style("font-family", "sans-serif")
-      .style("font-size", "22px")
-      .style("font-weight", "bold")
-      .text("Key people involved in laptop procurement case");
+    node.append("image")
+        .attr("class", "node-image")
+        .attr("xlink:href", d => d.image)
+        .attr("x", -imageRadius)
+        .attr("y", -imageRadius)
+        .attr("width", imageSize)
+        .attr("height", imageSize);
 
-  // Add subtitle
-  svg.append("text")
-      .attr("class", "chart-subtitle")
-      .attr("x", buyerCenter.x)
-      .attr("y", buyerCenter.y - buyerR - 95)   // Position below title, above legend
-      .attr("text-anchor", "middle")
-      .style("font-family", "sans-serif")
-      .style("font-size", "16px")
-      .style("font-weight", "normal")
-      .text("Hover over nodes to see more details");
+    node.append("text")
+        .attr("dy", dims.isMobile ? 35 : 48)
+        .text(d => d.person)
+        .style("font-size", dims.isMobile ? "8px" : "12px");
+
+    // Add "Minister" subtitle for Nadiem Makarim
+    node.filter(d => d.person === "Nadiem Makarim")
+        .append("text")
+        .attr("dy", dims.isMobile ? 45 : 62)
+        .text("Minister")
+        .style("font-size", dims.isMobile ? "6px" : "10px")
+        .style("fill", "#666");
+  }
+  
+  function drawLegend(dims, buyerCenter) {
+    legend = svg.append("g")
+        .attr("class", "legend")
+        .attr("transform", `translate(${buyerCenter.x - (dims.isMobile ? 60 : 100)}, ${buyerCenter.y - dims.buyerR - (dims.isMobile ? 40 : 60)})`);
+
+    const legendData = [
+        { status: "Witness", color: "steelblue" },
+        { status: "Suspect", color: "#de544a" }
+    ];
+
+    legend.selectAll("circle")
+        .data(legendData)
+        .enter()
+        .append("circle")
+        .attr("cx", (d, i) => i * (dims.isMobile ? 80 : 120))
+        .attr("cy", 0)
+        .attr("r", dims.isMobile ? 10 : 15)
+        .attr("stroke", d => d.color)
+        .attr("class", "legend-circle")
+        .attr("fill", "none");
+
+    legend.selectAll("text")
+        .data(legendData)
+        .enter()
+        .append("text")
+        .attr("x", (d, i) => i * (dims.isMobile ? 80 : 120) + (dims.isMobile ? 15 : 25))
+        .attr("y", 0)
+        .attr("dy", "0.3em")
+        .text(d => d.status)
+        .style("font-family", "sans-serif")
+        .style("font-size", dims.isMobile ? "8px" : "12px");
+  }
 
   // — 4. Load your CSV
-  const data = await d3.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRtgiSI8nDz2DcCgy2jgWWgDCR-DCgF8PMo0mDzKG28DZTJv9b4S_eFKWQFfSTNms9nlsn7nEGnBLZq/pub?gid=0&single=true&output=csv");
-  console.log("Loaded data:", data); // Add this line to check data
-  console.log("Number of nodes to create:", data.length);
+  data = await d3.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRtgiSI8nDz2DcCgy2jgWWgDCR-DCgF8PMo0mDzKG28DZTJv9b4S_eFKWQFfSTNms9nlsn7nEGnBLZq/pub?gid=0&single=true&output=csv");
+  console.log("Loaded data:", data);
 
-  // — 5. Normalize each node’s “group” and assign a radial target
+  // — 5. Process data
   data.forEach(d => {
+    const dims = getResponsiveDimensions();
     if (d.buyer.toLowerCase() === 'y') {
       d.grp = "buyer";
-      d.rTarget = buyerR * 0.8;  // Adjusted from 0.7
+      d.rTarget = dims.buyerR * 0.8;
     } else {
       d.grp = "none";
-      d.rTarget = outsideR;
+      d.rTarget = dims.buyerR + 100;
     }
-    // nested subgroup overrides
     if (d.special_staff.toLowerCase() === 'y') {
       d.grp = "special";
-      d.rTarget = specialR * 0.6;  // Adjusted from 0.7
+      d.rTarget = dims.specialR * 0.6;
     }
     if (d.gojek.toLowerCase() === 'y') {
       d.grp = "gojek";
-      d.rTarget = gojekR * 0.5;  // Adjusted from 0.7
+      d.rTarget = dims.gojekR * 0.5;
     }
-
-    // border color by status
     d.borderColor = d.Status === "Suspect" ? "#de544a" : "steelblue";
   });
 
-  // Add after the data.forEach loop
-  data.forEach(d => {
-    // Set initial positions based on target radius
-    const angle = Math.random() * 2 * Math.PI;
-    d.x = centerX + Math.cos(angle) * d.rTarget;
-    d.y = centerY + Math.sin(angle) * d.rTarget;
-  });
+  // Initial visualization
+  createVisualization();
 
-  // Replace the force simulation with fixed positioning
-
-  // First, define the exact positions for each node
-  const nodePositions = {
-      "Jurist Tan": { x: gojekCenter.x + 40, y: gojekCenter.y + 30 },
-      "Nadiem Makarim": { x: gojekCenter.x - 40, y: gojekCenter.y - 50 },
-      "Ibrahim Arief": { x: specialCenter.x + 95, y: specialCenter.y + 60 },
-      "Fiona Handayani": { x: specialCenter.x + 100, y: specialCenter.y - 70 },
-      "Mulyatsyah": { x: buyerCenter.x + 160, y: buyerCenter.y + 90},
-      "Sri Wahyuningsih": { x: buyerCenter.x + 180, y: buyerCenter.y - 70},
-      "Ganis Samoedra": { x: buyerCenter.x + 350, y: buyerCenter.y }  // Add this line
-  };
-
-  // Modify the simulation to use fixed positions
-  const sim = d3.forceSimulation(data)
-      .force("collision", d3.forceCollide(35))  // Keep collision detection
-      .force("fixed", (d) => {
-          const pos = nodePositions[d.person];
-          if (pos) {
-              d.x = pos.x;
-              d.y = pos.y;
-          }
-      });
-
-  // Debugging: log the simulation nodes
-  console.log("Simulation nodes:", sim.nodes());
-
-  // — 7. Tooltip for titles
-  const tooltip = d3.select("#tooltip");
-
-  // — 8. Draw nodes (as <g> to hold image + border + label)
-  const node = svg.selectAll("g.node")
-    .data(data)
-    .enter()
-    .append("g")
-      .attr("class", "node")
-      .on("mouseover", (e,d) => {
-        tooltip.style("visibility", "visible")
-               .text(d.title);
-      })
-      .on("mousemove", (e) => {
-        tooltip.style("top",  (e.pageY + 10) + "px")
-               .style("left", (e.pageX + 10) + "px");
-      })
-      .on("mouseout", () => {
-        tooltip.style("visibility", "hidden");
-      });
-
-  node.append("circle")
-      .attr("class", "node-border")
-      .attr("r", 30)
-      .attr("stroke", d => d.borderColor);  // This uses the color set above
-
-  // Adjust node image sizes for mobile
-  const imageSize = isMobile ? 40 : 60;       // Smaller images on mobile
-  const imageRadius = imageSize / 2;
-
-  // Update image elements
-  node.append("image")
-      .attr("class", "node-image")
-      .attr("xlink:href", d => d.image)
-      .attr("x", -imageRadius)
-      .attr("y", -imageRadius)
-      .attr("width", imageSize)
-      .attr("height", imageSize);
-
-  // Add person name
-  node.append("text")
-      .attr("dy", 48)
-      .text(d => d.person);
-
-  // Add "Minister" subtitle specifically for Nadiem Makarim
-  node.filter(d => d.person === "Nadiem Makarim")
-      .append("text")
-      .attr("dy", isMobile ? 58 : 62)  // Closer positioning on mobile
-      .text("Minister")
-      .style("font-size", isMobile ? "8px" : "10px")  // Responsive font size
-      .style("fill", "#666");
-
-  // Update the tick function to maintain fixed positions
-  sim.on("tick", () => {
-      node.attr("transform", d => {
-          const pos = nodePositions[d.person] || { x: d.x, y: d.y };
-          return `translate(${pos.x},${pos.y})`;
-      });
-  });
-
-  // stop dragging entirely
-  sim.alphaDecay(0.01); // Decreased from 0.02 to allow more time for positioning
-
-  // Add after SVG creation and before drawing circles
-  // Create legend - positioned above the buyer circle
-  const legend = svg.append("g")
-      .attr("class", "legend")
-      .attr("transform", `translate(${buyerCenter.x - 100}, ${buyerCenter.y - buyerR - 60})`);  // Position above buyer circle
-
-  // Add legend items
-  const legendData = [
-      { status: "Witness", color: "steelblue" },
-      { status: "Suspect", color: "#de544a" }  // Make sure this matches
-  ];
-
-  // Modify the colored circles for legend - horizontal layout
-  legend.selectAll("circle")
-      .data(legendData)
-      .enter()
-      .append("circle")
-      .attr("cx", (d, i) => i * 120)
-      .attr("cy", 0)
-      .attr("r", 15)          // Adjust outer radius (was 20)
-      .attr("stroke", d => d.color)
-      .attr("class", "legend-circle")  // Use new class instead of node-border
-      .attr("fill", "none");
-
-  // Adjust text position to match new circle size
-  legend.selectAll("text")
-      .data(legendData)
-      .enter()
-      .append("text")
-      .attr("x", (d, i) => i * 120 + 25)  // Adjusted from 40 to match new circle size
-      .attr("y", 0)
-      .attr("dy", "0.3em")
-      .text(d => d.status)
-      .style("font-family", "sans-serif")
-      .style("font-size", "12px");
-
-  // Add window resize listener
+  // Add window resize listener with debouncing
+  let resizeTimeout;
   window.addEventListener('resize', () => {
-      const newWidth = window.innerWidth;
-      const newHeight = window.innerHeight;
-      svg.attr("viewBox", [0, 0, newWidth, newHeight]);
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      createVisualization();
+    }, 150); // Debounce resize events
   });
 })();
 </script>
