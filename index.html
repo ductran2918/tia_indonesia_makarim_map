@@ -180,7 +180,7 @@
       .attr("class", "circle-header")  // Add this line
       .attr("x", specialCenter.x - 5)
       .attr("y", specialCenter.y - specialR + 45)
-      .text("Special Staff Team");
+      .text("Special staff");
 
   // Gojek circle
   svg.append("circle")
@@ -335,9 +335,9 @@
   // Add "Minister" subtitle specifically for Nadiem Makarim
   node.filter(d => d.person === "Nadiem Makarim")
       .append("text")
-      .attr("dy", 62)  // Position below the name
+      .attr("dy", isMobile ? 58 : 62)  // Closer positioning on mobile
       .text("Minister")
-      .style("font-size", "12px")
+      .style("font-size", isMobile ? "8px" : "10px")  // Responsive font size
       .style("fill", "#666");
 
   // Update the tick function to maintain fixed positions
