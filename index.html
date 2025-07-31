@@ -5,30 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Network Graphic - Smart Responsive</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
+
+  <!-- REQUIRED: iframe-resizer contentWindow script for TIA compatibility -->
+  <script src="https://cdn.jsdelivr.net/npm/iframe-resizer@4.3.2/js/iframeResizer.contentWindow.min.js"></script>
+
   <style>
     * {
       box-sizing: border-box;
     }
-    
-    body, html { 
-        margin: 0; 
+
+    body, html {
+        margin: 0;
         padding: 0;
         background: transparent;
         font-family: sans-serif;
+        /* IMPORTANT: Remove fixed heights for iframe compatibility */
+        height: auto;
     }
-    
+
     .visualization-container {
       width: 100%;
       background: transparent;
       position: relative;
+      /* Ensure container grows with content */
+      min-height: 0;
+      height: auto;
     }
-    
-    svg { 
-        display: block; 
+
+    svg {
+        display: block;
         width: 100%;
         background: transparent;
     }
-    
+
     .group-rectangle {
       fill: none;
       stroke-width: 1px;
@@ -59,9 +68,9 @@
       background: rgba(0,0,0,0.7);
       color: #fff;
       border-radius: 4px;
-      font-size: 14px;         
-      font-family: sans-serif;    
-      font-weight: normal;       
+      font-size: 14px;
+      font-family: sans-serif;
+      font-weight: normal;
       pointer-events: none;
       visibility: hidden;
       max-width: 200px;
@@ -113,8 +122,6 @@
       text-anchor: middle;
     }
 
-    /* No longer need mobile-specific media queries for font sizes, 
-       as SVG scaling will handle it. We can keep some for tooltips or other HTML elements if needed. */
     @media (max-width: 768px) {
       .tooltip {
         padding: 4px 6px;
@@ -127,14 +134,41 @@
 </head>
 <body>
 
-<div class="visualization-container">
+<!-- REQUIRED: data-iframe-height attribute for TIA iframe-resizer -->
+<div class="visualization-container" data-iframe-height>
   <div class="tooltip" id="tooltip"></div>
 </div>
 
 <script>
+// REQUIRED: iframe-resizer configuration for TIA compatibility
+window.iFrameResizer = {
+    targetOrigin: '*',
+    onInit: function() {
+        console.log('iframe-resizer initialized by parent');
+    },
+    onMessage: function(msg) {
+        console.log('Message from parent:', msg);
+    },
+    onReady: function() {
+        console.log('iframe-resizer ready for messages');
+    }
+};
+
+// Function to notify parent of size changes
+function notifyParentOfResize() {
+    if ('parentIFrame' in window) {
+        try {
+            window.parentIFrame.size();
+            console.log('Notified parent of size change');
+        } catch (e) {
+            console.log('Could not notify parent:', e);
+        }
+    }
+}
+
 (async function() {
   let svg, data, node, legend;
-  
+
   // Define fixed dimensions for the SVG coordinate system (the viewBox)
   const VIEWBOX_WIDTH = 800;
   const VIEWBOX_HEIGHT = 600; // Will be adjusted based on content
@@ -154,10 +188,10 @@
     const gojekRectY = gojekTextY + 15;
     const topRowY = gojekRectY + nodeSize * 0.8;
     const bottomRowY = topRowY + nodeSize + 40;
-    
+
     const ibrahimTextY = bottomRowY + nodeToPersonSpace;
     const specialTextY = ibrahimTextY + 35;
-    
+
     const specialRectBottom = bottomRowY + nodeSize * 0.8 + nodeToPersonSpace;
     const googleTextY = specialRectBottom + 30;
     const googleY = googleTextY + 20;
@@ -202,19 +236,19 @@
       nodeSize: nodeSize
     };
   }
-  
+
   // Create visualization - simplified to draw once
   function createVisualization() {
     const nodePositions = getNodePositions();
     const { centerX, contentHeight } = nodePositions;
-    
+
     // Clear existing SVG
     d3.select(".visualization-container").select("svg").remove();
-    
+
     // Create new SVG with a viewBox for automatic scaling
     svg = d3.select(".visualization-container")
         .append("svg")
-        .attr("viewBox", `0 0 ${VIEWBOX_WIDTH} ${contentHeight}`)
+        .attr("viewBox", 0 0 ${VIEWBOX_WIDTH} ${contentHeight})
         .attr("preserveAspectRatio", "xMidYMid meet")
         .style("width", "100%")
         .style("height", "auto")
@@ -237,20 +271,25 @@
 
     // Draw rectangles
     drawRectangles(nodePositions);
-    
+
     // Draw nodes if data is available
     if (data) {
       drawNodes(nodePositions);
     }
-    
+
     // Draw legend
     drawLegend(nodePositions);
+
+    // IMPORTANT: Notify parent of content changes after rendering
+    setTimeout(() => {
+        notifyParentOfResize();
+    }, 100);
   }
-  
+
   // Rectangle drawing function using fixed coordinates
   function drawRectangles(nodePositions) {
     const { gojekRect, specialRect, ministryTextY, gojekTextX, gojekTextY, specialTextX, specialTextY, googleTextY, centerX } = nodePositions;
-    
+
     // Ministry title
     svg.append("text")
         .attr("class", "circle-header")
@@ -265,7 +304,7 @@
         .attr("y", gojekRect.y)
         .attr("width", gojekRect.width)
         .attr("height", gojekRect.height);
-        
+
     svg.append("text")
         .attr("class", "gojek-text")
         .attr("x", gojekTextX)
@@ -279,7 +318,7 @@
         .attr("y", specialRect.y)
         .attr("width", specialRect.width)
         .attr("height", specialRect.height);
-        
+
     svg.append("text")
         .attr("class", "special-text")
         .attr("x", specialTextX)
@@ -293,16 +332,16 @@
         .attr("y", googleTextY)
         .text("Google Indonesia");
   }
-  
+
   function drawNodes(nodePositions) {
     const tooltip = d3.select("#tooltip");
     const { nodeSize } = nodePositions;
     const imageSize = nodeSize * 0.8; // 40
     const imageRadius = imageSize / 2;
-    
+
     const borderSize = nodeSize * 0.9; // 45
     const borderRadius = borderSize / 2;
-    
+
     node = svg.selectAll("g.node")
       .data(data)
       .enter()
@@ -310,7 +349,7 @@
         .attr("class", "node")
         .attr("transform", d => {
           const pos = nodePositions.positions[d.person] || { x: nodePositions.centerX, y: nodePositions.centerY };
-          return `translate(${pos.x},${pos.y})`;
+          return translate(${pos.x},${pos.y});
         });
 
     // Add touch events for mobile, mouse events for all
@@ -363,7 +402,7 @@
         .style("text-anchor", "middle")
         .style("fill", "#333");
   }
-  
+
   function drawLegend(nodePositions) {
     const legendData = [
       { status: "Witness", color: "steelblue" },
@@ -380,7 +419,7 @@
 
     const legend = svg.append("g")
         .attr("class", "legend")
-        .attr("transform", `translate(${legendX},${legendY})`);
+        .attr("transform", translate(${legendX},${legendY}));
 
     legend.selectAll("rect")
       .data(legendData)
@@ -415,14 +454,42 @@
   // Initial visualization - now runs only once
   createVisualization();
 
-  // No longer need the resize listener
-  // let resizeTimeout;
-  // window.addEventListener('resize', () => {
-  //   clearTimeout(resizeTimeout);
-  //   resizeTimeout = setTimeout(() => {
-  //     createVisualization();
-  //   }, 150);
-  // });
+  // ENHANCED: Use ResizeObserver to detect when content size changes
+  if (typeof ResizeObserver !== 'undefined') {
+    const resizeObserver = new ResizeObserver(entries => {
+        console.log('Content size changed, notifying parent');
+        notifyParentOfResize();
+    });
+
+    const container = document.querySelector('.visualization-container');
+    if (container) {
+        resizeObserver.observe(container);
+    }
+  }
+
+  // ENHANCED: Check periodically if iframe-resizer becomes available
+  let checkCount = 0;
+  const maxChecks = 10;
+
+  function checkParentIFrame() {
+    if (checkCount >= maxChecks) return;
+
+    console.log(Check #${checkCount + 1}/${maxChecks} for parentIFrame availability);
+    const available = 'parentIFrame' in window;
+    console.log('parentIFrame available:', available);
+
+    if (available) {
+        console.log('parentIFrame connection established');
+        notifyParentOfResize();
+    } else {
+        checkCount++;
+        setTimeout(checkParentIFrame, 1000);
+    }
+  }
+
+  // Start checking after a short delay
+  setTimeout(checkParentIFrame, 1000);
+
 })();
 </script>
 </body>
