@@ -248,13 +248,13 @@ function notifyParentOfResize() {
     // Create new SVG with a viewBox for automatic scaling
     svg = d3.select(".visualization-container")
         .append("svg")
-        .attr("viewBox", 0 0 ${VIEWBOX_WIDTH} ${contentHeight})
+        .attr("viewBox", `0 0 ${VIEWBOX_WIDTH} ${contentHeight}`)
         .attr("preserveAspectRatio", "xMidYMid meet")
         .style("width", "100%")
         .style("height", "auto")
-        .style("max-width", "800px") // Optional: set a max-width for large screens
+        .style("max-width", "800px")
         .style("display", "block")
-        .style("margin", "0 auto"); // Center the SVG
+        .style("margin", "0 auto");
 
     // Draw titles
     svg.append("text")
@@ -349,7 +349,7 @@ function notifyParentOfResize() {
         .attr("class", "node")
         .attr("transform", d => {
           const pos = nodePositions.positions[d.person] || { x: nodePositions.centerX, y: nodePositions.centerY };
-          return translate(${pos.x},${pos.y});
+          return `translate(${pos.x},${pos.y})`;
         });
 
     // Add touch events for mobile, mouse events for all
@@ -419,7 +419,7 @@ function notifyParentOfResize() {
 
     const legend = svg.append("g")
         .attr("class", "legend")
-        .attr("transform", translate(${legendX},${legendY}));
+        .attr("transform", `translate(${legendX},${legendY})`);
 
     legend.selectAll("rect")
       .data(legendData)
@@ -474,7 +474,7 @@ function notifyParentOfResize() {
   function checkParentIFrame() {
     if (checkCount >= maxChecks) return;
 
-    console.log(Check #${checkCount + 1}/${maxChecks} for parentIFrame availability);
+    console.log(`Check #${checkCount + 1}/${maxChecks} for parentIFrame availability`);
     const available = 'parentIFrame' in window;
     console.log('parentIFrame available:', available);
 
