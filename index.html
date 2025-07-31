@@ -113,38 +113,14 @@
       text-anchor: middle;
     }
 
-    /* Mobile-specific styles */
+    /* No longer need mobile-specific media queries for font sizes, 
+       as SVG scaling will handle it. We can keep some for tooltips or other HTML elements if needed. */
     @media (max-width: 768px) {
-      .group-rectangle {
-        stroke-width: 1px;
-        stroke-dasharray: 3,3;
-      }
-      .node-border {
-        stroke-width: 2px;
-      }
-      text {
-        font-size: 8px;
-      }
       .tooltip {
         padding: 4px 6px;
         font-size: 11px;
         max-width: 120px;
         line-height: 1.3;
-      }
-      .circle-header, .gojek-text, .special-text {
-        font-size: 9px;
-      }
-      .legend text {
-        font-size: 8px;
-      }
-      .legend-circle {
-        stroke-width: 4px;
-      }
-      .chart-title {
-        font-size: 13px;
-      }
-      .chart-subtitle {
-        font-size: 10px;
       }
     }
   </style>
@@ -159,55 +135,32 @@
 (async function() {
   let svg, data, node, legend;
   
-  // Get responsive dimensions - table layout for all screens
-  function getResponsiveDimensions() {
-    const container = d3.select(".visualization-container").node();
-    const width = container.getBoundingClientRect().width;
-    const isMobile = width <= 500;
-    
-    // Use a single scale factor for everything
-    const baseScale = isMobile ? Math.min(width / 375, 1) : Math.min(width / 1200, 1.5);
-    
-    // Node size for square layout
-    const nodeSize = isMobile ? 40 : (60 * baseScale);
-    
-    return {
-      width,
-      isMobile,
-      centerX: width / 2,
-      centerY: width / 3, // Use width to maintain aspect ratio
-      scale: baseScale,
-      nodeSize: nodeSize
-    };
-  }
-  
-  // Get node positions - table layout for all screens
-  function getNodePositions(dims) {
-    const { centerX, centerY, nodeSize, scale } = dims;
-    const horizontalSpacing = nodeSize * 2.5;
-    const verticalSpacing   = nodeSize * 2;
-    const nodeToPersonSpace = dims.isMobile ? 25 : (35 * scale);
+  // Define fixed dimensions for the SVG coordinate system (the viewBox)
+  const VIEWBOX_WIDTH = 800;
+  const VIEWBOX_HEIGHT = 600; // Will be adjusted based on content
 
-    // Start positioning from the legend and work down
-    const legendY = dims.isMobile ? 65 : (75 * scale); // 10px after subtitle
-    const ministryTextY = legendY + (dims.isMobile ? 30 : (40 * scale)); // 20px after legend
-    const gojekTextY = ministryTextY + (dims.isMobile ? 15 : (20 * scale)); // 5px after ministry text
-    const gojekRectY = gojekTextY + (dims.isMobile ? 10 : (15 * scale)); // 5px after ex-Gojek text
-    const topRowY = gojekRectY + nodeSize * 0.8; // Top of nodes aligns with rect
-    const bottomRowY = topRowY + nodeSize + (dims.isMobile ? 30 : (40 * scale)); // 30px between node borders
+  // Get node positions - calculated once for the fixed viewBox
+  function getNodePositions() {
+    const centerX = VIEWBOX_WIDTH / 2;
+    const nodeSize = 50;
+    const horizontalSpacing = nodeSize * 2.5;
+    const verticalSpacing = nodeSize * 2;
+    const nodeToPersonSpace = 35;
+
+    // Positioning based on fixed coordinates
+    const legendY = 75;
+    const ministryTextY = legendY + 40;
+    const gojekTextY = ministryTextY + 20;
+    const gojekRectY = gojekTextY + 15;
+    const topRowY = gojekRectY + nodeSize * 0.8;
+    const bottomRowY = topRowY + nodeSize + 40;
     
-    // Calculate Special staff text position - 10px below Ibrahim's text
     const ibrahimTextY = bottomRowY + nodeToPersonSpace;
-    const specialTextY = ibrahimTextY + (dims.isMobile ? 20 : (35 * scale)); // 10px below Ibrahim's text
+    const specialTextY = ibrahimTextY + 35;
     
-    // Calculate Special staff rectangle bottom
     const specialRectBottom = bottomRowY + nodeSize * 0.8 + nodeToPersonSpace;
-    
-    // Google text 20px below Special staff rectangle bottom
-    const googleTextY = specialRectBottom + (dims.isMobile ? 25 : (30 * scale)); // 20px below special rect
-    
-    // Ganis node 10px below Google text
-    const googleY = googleTextY + (dims.isMobile ? 15 : (20 * scale)); // Adjust this calculation
+    const googleTextY = specialRectBottom + 30;
+    const googleY = googleTextY + 20;
 
     const startX = centerX - horizontalSpacing;
 
@@ -221,12 +174,12 @@
       "Ganis Samoedra":     { x: centerX,                      y: googleY + nodeSize * 0.3 }
     };
 
-    // Calculate the actual height needed for the content
-    const ganisNodeBottom = positions["Ganis Samoedra"].y + (dims.isMobile ? 30 : (45 * dims.scale)) + 10; // Position + text offset + padding
+    const contentHeight = positions["Ganis Samoedra"].y + 45 + 10;
 
     return {
       positions,
-      contentHeight: ganisNodeBottom, // Add this new property
+      contentHeight,
+      centerX,
       gojekRect: {
         x:      startX - nodeSize * 0.8,
         y:      gojekRectY,
@@ -239,57 +192,69 @@
         width:  horizontalSpacing * 2 + nodeSize * 1.6,
         height: nodeSize * 1.6 + nodeToPersonSpace
       },
-      // center ex-Gojek text on the first-column node:
       gojekTextX: positions["Nadiem Makarim"].x,
       gojekTextY: gojekTextY,
-
       specialTextX: centerX,
-      specialTextY: specialTextY, // Updated to be 10px below Ibrahim's text
+      specialTextY: specialTextY,
       ministryTextY: ministryTextY,
-      googleTextY: googleTextY, // Updated to be 20px below special rect
-      legendY: legendY
+      googleTextY: googleTextY,
+      legendY: legendY,
+      nodeSize: nodeSize
     };
   }
   
-  // Create visualization - unified vertical layout for all screens
+  // Create visualization - simplified to draw once
   function createVisualization() {
-    const dims = getResponsiveDimensions();
-    const nodePositions = getNodePositions(dims);
+    const nodePositions = getNodePositions();
+    const { centerX, contentHeight } = nodePositions;
     
     // Clear existing SVG
     d3.select(".visualization-container").select("svg").remove();
     
-    // Create new SVG
+    // Create new SVG with a viewBox for automatic scaling
     svg = d3.select(".visualization-container")
         .append("svg")
-        .attr("viewBox", [0, 0, dims.width, nodePositions.contentHeight]) // Use dynamic height
+        .attr("viewBox", `0 0 ${VIEWBOX_WIDTH} ${contentHeight}`)
         .attr("preserveAspectRatio", "xMidYMid meet")
-        .attr("width", "100%") // Use 100% for responsive width
-        .attr("height", nodePositions.contentHeight) // Use dynamic height
         .style("width", "100%")
-        .style("height", "auto");
+        .style("height", "auto")
+        .style("max-width", "800px") // Optional: set a max-width for large screens
+        .style("display", "block")
+        .style("margin", "0 auto"); // Center the SVG
 
-    // Draw rectangles using unified vertical layout
-    drawRectangles(dims, nodePositions);
+    // Draw titles
+    svg.append("text")
+        .attr("class", "chart-title")
+        .attr("x", centerX)
+        .attr("y", 25)
+        .text("Key people involved in laptop procurement case");
+
+    svg.append("text")
+        .attr("class", "chart-subtitle")
+        .attr("x", centerX)
+        .attr("y", 45)
+        .text("Hover or tap nodes for details");
+
+    // Draw rectangles
+    drawRectangles(nodePositions);
     
     // Draw nodes if data is available
     if (data) {
-      drawNodes(dims, nodePositions);
+      drawNodes(nodePositions);
     }
     
     // Draw legend
-    drawLegend(dims, nodePositions);
+    drawLegend(nodePositions);
   }
   
-  // Unified rectangle drawing function for all screen sizes
-  function drawRectangles(dims, nodePositions) {
-    const { gojekRect, specialRect, ministryTextY, gojekTextX, gojekTextY, specialTextX, specialTextY, googleTextY } = nodePositions;
-    const { scale } = dims;
+  // Rectangle drawing function using fixed coordinates
+  function drawRectangles(nodePositions) {
+    const { gojekRect, specialRect, ministryTextY, gojekTextX, gojekTextY, specialTextX, specialTextY, googleTextY, centerX } = nodePositions;
     
     // Ministry title
     svg.append("text")
         .attr("class", "circle-header")
-        .attr("x", dims.centerX)
+        .attr("x", centerX)
         .attr("y", ministryTextY)
         .text("Indonesia's Ministry of Education and Culture");
 
@@ -324,31 +289,18 @@
     // Google Indonesia text
     svg.append("text")
         .attr("class", "circle-header")
-        .attr("x", dims.centerX)
+        .attr("x", centerX)
         .attr("y", googleTextY)
         .text("Google Indonesia");
-
-    // Title and subtitle with 10px spacing
-    svg.append("text")
-        .attr("class", "chart-title")
-        .attr("x", dims.centerX)
-        .attr("y", dims.isMobile ? 20 : (25 * dims.scale))
-        .text("Key people involved in laptop procurement case");
-
-    svg.append("text")
-        .attr("class", "chart-subtitle")
-        .attr("x", dims.centerX)
-        .attr("y", dims.isMobile ? 35 : (45 * dims.scale)) // 10px after title
-        .text(dims.isMobile ? "Tap nodes for details" : "Hover over nodes for details");
   }
   
-  function drawNodes(dims, nodePositions) {
+  function drawNodes(nodePositions) {
     const tooltip = d3.select("#tooltip");
-    const imageSize = dims.isMobile ? 30 : (50 * dims.scale);
+    const { nodeSize } = nodePositions;
+    const imageSize = nodeSize * 0.8; // 40
     const imageRadius = imageSize / 2;
     
-    // Square border size
-    const borderSize = dims.isMobile ? 35 : (55 * dims.scale);
+    const borderSize = nodeSize * 0.9; // 45
     const borderRadius = borderSize / 2;
     
     node = svg.selectAll("g.node")
@@ -357,14 +309,14 @@
       .append("g")
         .attr("class", "node")
         .attr("transform", d => {
-          const pos = nodePositions.positions[d.person] || { x: dims.centerX, y: dims.centerY };
+          const pos = nodePositions.positions[d.person] || { x: nodePositions.centerX, y: nodePositions.centerY };
           return `translate(${pos.x},${pos.y})`;
         });
 
     // Add touch events for mobile, mouse events for all
     node.on("touchstart", (e,d) => {
         e.preventDefault();
-        tooltip.style("visibility", "visible").text(d.title);
+        tooltip.style("visibility", "visible").html(d.title); // Use .html() if title has line breaks
         const touch = e.touches[0];
         tooltip.style("top", (touch.pageY + 10) + "px")
                .style("left", (touch.pageX + 10) + "px");
@@ -375,7 +327,7 @@
         }, 2000);
       })
       .on("mouseover", (e,d) => {
-        tooltip.style("visibility", "visible").text(d.title);
+        tooltip.style("visibility", "visible").html(d.title);
       })
       .on("mousemove", (e) => {
         tooltip.style("top", (e.pageY + 10) + "px")
@@ -385,7 +337,7 @@
         tooltip.style("visibility", "hidden");
       });
 
-    // Square border instead of circle
+    // Square border
     node.append("rect")
         .attr("class", "node-border")
         .attr("x", -borderRadius)
@@ -395,7 +347,7 @@
         .attr("stroke", d => d.borderColor)
         .attr("fill", "none");
 
-    // Square image instead of circular
+    // Square image
     node.append("image")
         .attr("class", "node-image")
         .attr("xlink:href", d => d.image)
@@ -405,35 +357,31 @@
         .attr("height", imageSize);
 
     node.append("text")
-        .attr("dy", dims.isMobile ? 30 : (45 * dims.scale))
+        .attr("dy", 35) // Fixed offset
         .text(d => d.person)
-        .style("font-size", dims.isMobile ? "8px" : `${10 * dims.scale}px`)
+        .style("font-size", "10px") // Fixed font size
         .style("text-anchor", "middle")
         .style("fill", "#333");
   }
   
-  function drawLegend(dims, nodePositions) {
+  function drawLegend(nodePositions) {
     const legendData = [
       { status: "Witness", color: "steelblue" },
       { status: "Suspect", color: "#de544a" }
     ];
 
-    const spacing    = dims.isMobile ? 50 : (80 * dims.scale);
-    const squareSize = dims.isMobile ? 12 : (16 * dims.scale);
-    const textOffset = dims.isMobile ? 10 : (12 * dims.scale);
+    const spacing    = 80;
+    const squareSize = 14;
+    const textOffset = 10;
 
-    // total width = distance from first center to last center + one square width
     const totalWidth = (legendData.length - 1) * spacing + squareSize;
-
-    // center the group by shifting left by half its width
-    const legendX = dims.centerX - (totalWidth / 2);
-    const legendY = nodePositions.legendY; // Use the calculated legendY
+    const legendX = nodePositions.centerX - (totalWidth / 2);
+    const legendY = nodePositions.legendY;
 
     const legend = svg.append("g")
         .attr("class", "legend")
         .attr("transform", `translate(${legendX},${legendY})`);
 
-    // draw squares centered on i*spacing
     legend.selectAll("rect")
       .data(legendData)
       .enter().append("rect")
@@ -443,19 +391,17 @@
         .attr("height", squareSize)
         .attr("stroke", d => d.color)
         .attr("fill",   "none")
-        .attr("stroke-width", dims.isMobile ? 2 : (4 * dims.scale));
+        .attr("stroke-width", 3);
 
-    // draw labels centered also on i*spacing
     legend.selectAll("text")
       .data(legendData)
       .enter().append("text")
-        // move to right edge of square + a little padding
         .attr("x", (d, i) => i * spacing + squareSize/2 + textOffset*0.45)
         .attr("y", 0)
         .attr("dy", "0.3em")
         .text(d => d.status)
-        .style("text-anchor", "start")   // left-align the label
-        .style("font-size", dims.isMobile ? "7px" : `${12 * dims.scale}px`);
+        .style("text-anchor", "start")
+        .style("font-size", "12px");
   }
 
   // Load CSV data
@@ -466,21 +412,18 @@
     d.borderColor = d.Status === "Suspect" ? "#de544a" : "steelblue";
   });
 
-  // Initial visualization
+  // Initial visualization - now runs only once
   createVisualization();
 
-  // Add window resize listener with debouncing
-  let resizeTimeout;
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-      createVisualization();
-    }, 150);
-  });
+  // No longer need the resize listener
+  // let resizeTimeout;
+  // window.addEventListener('resize', () => {
+  //   clearTimeout(resizeTimeout);
+  //   resizeTimeout = setTimeout(() => {
+  //     createVisualization();
+  //   }, 150);
+  // });
 })();
-</script>
-</body>
-</html>
 </script>
 </body>
 </html>
